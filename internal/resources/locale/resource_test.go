@@ -199,3 +199,66 @@ resource "contentful_locale" "mylocale" {
 }
 `, spaceID, environment, name, code)
 }
+
+// TestLocaleResource_NonMasterEnvironment covers https://github.com/labd/terraform-provider-contentful/issues/155:
+// creating a locale in a non-master environment used to fail with "Provider
+// produced inconsistent result after apply" because the environment was read
+// back from the API response instead of the configuration.
+func TestLocaleResource_NonMasterEnvironment(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("TF_ACC not set, skipping acceptance test")
+	}
+
+	acctest.TestAccPreCheck(t)
+
+	name := fmt.Sprintf("locale-name-%s", hashicor_acctest.RandString(3))
+	code := fmt.Sprintf("l%s", hashicor_acctest.RandString(2))
+	resourceName := "contentful_locale.mylocale"
+	spaceID := acctest.SpaceID()
+	environment := acctest.CreateTemporaryEnvironment(t)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.TestAccPreCheck(t) },
+		CheckDestroy: testAccCheckContentfulLocaleDestroy,
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"contentful": providerserver.NewProtocol6WithError(provider.New("test", true)()),
+		},
+		Steps: []resource.TestStep{
+			{
+				// Create writes the environment from the configuration, so the
+				// applied value stays consistent with the plan.
+				Config: testLocaleConfig(spaceID, environment, name, code),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "environment", environment),
+					resource.TestCheckResourceAttr(resourceName, "code", code),
+				),
+			},
+			{
+				// Read keeps the environment, so a refresh does not produce a diff.
+				Config:   testLocaleConfig(spaceID, environment, name, code),
+				PlanOnly: true,
+			},
+			{
+				// Update keeps the environment as well.
+				Config: testLocaleUpdateConfig(spaceID, environment, name, code),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "environment", environment),
+					resource.TestCheckResourceAttr(resourceName, "name", fmt.Sprintf("%s-updated", name)),
+				),
+			},
+			{
+				// ImportState uses the environment from the import ID.
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					rs, ok := s.RootModule().Resources[resourceName]
+					if !ok {
+						return "", fmt.Errorf("not found: %s", resourceName)
+					}
+					return fmt.Sprintf("%s:%s:%s", rs.Primary.ID, environment, spaceID), nil
+				},
+			},
+		},
+	})
+}

@@ -26,6 +26,16 @@ func (t *Tag) Import(tag *sdk.Tag) {
 	t.Visibility = types.StringValue(string(tag.Sys.Visibility))
 }
 
+// VisibilityForCreate returns the configured visibility or Contentful's
+// documented private default when visibility is omitted.
+func (t *Tag) VisibilityForCreate() sdk.TagVisibility {
+	if t.Visibility.IsNull() || t.Visibility.IsUnknown() {
+		return sdk.TagVisibilityPrivate
+	}
+
+	return sdk.TagVisibility(t.Visibility.ValueString())
+}
+
 // Draft creates a TagDraft object for creating or updating a tag.
 func (t *Tag) Draft() sdk.TagDraft {
 	return sdk.TagDraft{

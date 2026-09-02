@@ -128,7 +128,7 @@ func (e *localeResource) Create(ctx context.Context, request resource.CreateRequ
 	}
 
 	state := &Locale{}
-	state.Import(resp.JSON201)
+	state.Import(resp.JSON201, plan.Environment.ValueString())
 	response.Diagnostics.Append(response.State.Set(ctx, state)...)
 }
 
@@ -159,7 +159,7 @@ func (e *localeResource) Read(ctx context.Context, request resource.ReadRequest,
 		return
 	}
 
-	state.Import(resp.JSON200)
+	state.Import(resp.JSON200, state.Environment.ValueString())
 	response.Diagnostics.Append(response.State.Set(ctx, state)...)
 }
 
@@ -201,7 +201,7 @@ func (e *localeResource) Update(ctx context.Context, request resource.UpdateRequ
 		return
 	}
 
-	state.Import(resp.JSON200)
+	state.Import(resp.JSON200, plan.Environment.ValueString())
 	response.Diagnostics.Append(response.State.Set(ctx, state)...)
 }
 
@@ -254,6 +254,6 @@ func (e *localeResource) ImportState(ctx context.Context, request resource.Impor
 	}
 
 	state := &Locale{}
-	state.Import(resp.JSON200)
+	state.Import(resp.JSON200, environment)
 	response.Diagnostics.Append(response.State.Set(ctx, state)...)
 }

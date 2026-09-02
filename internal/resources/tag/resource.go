@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
@@ -72,12 +71,12 @@ func (e *tagResource) Schema(_ context.Context, _ resource.SchemaRequest, respon
 			"visibility": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("private"),
 				Description: "The tag visibility: private tags are CMA-only; public tags are available through all Contentful APIs",
 				Validators: []validator.String{
 					stringvalidator.OneOf("private", "public"),
 				},
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
@@ -101,9 +100,8 @@ func (e *tagResource) Create(ctx context.Context, request resource.CreateRequest
 		return
 	}
 
-	visibility := sdk.TagVisibility(plan.Visibility.ValueString())
 	params := &sdk.UpsertTagParams{
-		XContentfulTagVisibility: &visibility,
+		XContentfulTagVisibility: utils.Pointer(plan.VisibilityForCreate()),
 	}
 	resp, err := e.client.UpsertTagWithResponse(
 		ctx,

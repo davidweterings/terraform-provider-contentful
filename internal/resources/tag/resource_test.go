@@ -60,9 +60,10 @@ func TestTagResource_Basic(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:       resourceName,
+				ImportState:        true,
+				ImportStateVerify:  true,
+				ImportStatePersist: true,
 				ImportStateIdFunc: func(state *terraform.State) (string, error) {
 					rs, ok := state.RootModule().Resources[resourceName]
 					if !ok {
@@ -70,6 +71,10 @@ func TestTagResource_Basic(t *testing.T) {
 					}
 					return fmt.Sprintf("%s:%s:%s", rs.Primary.ID, rs.Primary.Attributes["environment"], rs.Primary.Attributes["space_id"]), nil
 				},
+			},
+			{
+				Config:   testTagConfigWithoutVisibility(spaceID, environment, tagID, name+" updated"),
+				PlanOnly: true,
 			},
 		},
 	})
@@ -146,4 +151,75 @@ resource "contentful_tag" "test" {
   visibility  = %q
 }
 `, spaceID, environment, tagID, name, visibility)
+}
+
+func testTagConfigWithoutVisibility(spaceID, environment, tagID, name string) string {
+	return fmt.Sprintf(`
+resource "contentful_tag" "test" {
+  space_id    = %q
+  environment = %q
+  id          = %q
+  name        = %q
+}
+`, spaceID, environment, tagID, name)
+}
+
+// TestTagResource_NonMasterEnvironment mirrors the locale coverage for
+// https://github.com/labd/terraform-provider-contentful/issues/155: the
+// environment in state must come from the configuration, not from the
+// sys.environment link in the API response.
+func TestTagResource_NonMasterEnvironment(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("TF_ACC not set, skipping acceptance test")
+	}
+
+	acctest.TestAccPreCheck(t)
+
+	tagID := fmt.Sprintf("tag-%s", hashicorp_acctest.RandString(8))
+	name := fmt.Sprintf("Tag %s", hashicorp_acctest.RandString(8))
+	resourceName := "contentful_tag.test"
+	spaceID := acctest.SpaceID()
+	environment := acctest.CreateTemporaryEnvironment(t)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.TestAccPreCheck(t) },
+		CheckDestroy: testAccCheckContentfulTagDestroy,
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"contentful": providerserver.NewProtocol6WithError(provider.New("test", true)()),
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testTagConfig(spaceID, environment, tagID, name, "public"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "environment", environment),
+					resource.TestCheckResourceAttr(resourceName, "id", tagID),
+					testAccCheckContentfulTagExists(t, resourceName, func(t *testing.T, tag *sdk.Tag) {
+						assert.Equal(t, name, tag.Name)
+					}),
+				),
+			},
+			{
+				// Read keeps the environment, so a refresh does not produce a diff.
+				Config:   testTagConfig(spaceID, environment, tagID, name, "public"),
+				PlanOnly: true,
+			},
+			{
+				// Update keeps the environment as well.
+				Config: testTagConfig(spaceID, environment, tagID, name+" updated", "public"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "environment", environment),
+					resource.TestCheckResourceAttr(resourceName, "name", name+" updated"),
+				),
+			},
+			{
+				// ImportState uses the environment from the import ID.
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: func(state *terraform.State) (string, error) {
+					return fmt.Sprintf("%s:%s:%s", tagID, environment, spaceID), nil
+				},
+			},
+		},
+	})
 }

@@ -21,14 +21,19 @@ type Locale struct {
 	CMA          types.Bool   `tfsdk:"cma"`
 }
 
-// Import populates the Locale struct from an SDK locale object
-func (l *Locale) Import(locale *sdk.Locale) {
+// Import populates the Locale struct from an SDK locale object.
+func (l *Locale) Import(locale *sdk.Locale, environment string) {
 	l.ID = types.StringValue(locale.Sys.Id)
 	l.SpaceID = types.StringValue(locale.Sys.Space.Sys.Id)
 	l.Version = types.Int64Value(locale.Sys.Version)
 	l.Name = types.StringValue(locale.Name)
 	l.Code = types.StringValue(locale.Code)
-	l.Environment = types.StringValue(locale.Sys.Environment.Sys.Id)
+	// The API returns the environment the locale lives in; the configured
+	// environment is only used when the response omits it.
+	l.Environment = types.StringValue(environment)
+	if locale.Sys.Environment != nil {
+		l.Environment = types.StringValue(locale.Sys.Environment.Sys.Id)
+	}
 
 	// Handle nullable fields
 	if locale.FallbackCode != nil {
