@@ -1,6 +1,8 @@
 package tag
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/labd/terraform-provider-contentful/internal/sdk"
@@ -16,14 +18,22 @@ type Tag struct {
 	Visibility  types.String `tfsdk:"visibility"`
 }
 
-// Import populates the Tag struct from an SDK tag object.
-func (t *Tag) Import(tag *sdk.Tag) {
+// Import populates the Tag struct from an SDK tag object. It fails when the API
+// response has no environment link, since that would silently drop the
+// environment from state.
+func (t *Tag) Import(tag *sdk.Tag) error {
+	if tag.Sys.Environment.Sys.Id == "" {
+		return fmt.Errorf("tag %s has no environment in its system properties", tag.Sys.Id)
+	}
+
 	t.ID = types.StringValue(tag.Sys.Id)
 	t.Version = types.Int64Value(tag.Sys.Version)
 	t.SpaceID = types.StringValue(tag.Sys.Space.Sys.Id)
 	t.Environment = types.StringValue(tag.Sys.Environment.Sys.Id)
 	t.Name = types.StringValue(tag.Name)
 	t.Visibility = types.StringValue(string(tag.Sys.Visibility))
+
+	return nil
 }
 
 // VisibilityForCreate returns the configured visibility or Contentful's

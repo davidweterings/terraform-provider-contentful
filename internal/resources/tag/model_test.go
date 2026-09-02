@@ -11,7 +11,7 @@ import (
 
 func TestTag_Import(t *testing.T) {
 	tag := Tag{}
-	tag.Import(&sdk.Tag{
+	err := tag.Import(&sdk.Tag{
 		Name: "Campaign",
 		Sys: sdk.SystemPropertiesTag{
 			Id:          "campaign",
@@ -22,12 +22,27 @@ func TestTag_Import(t *testing.T) {
 		},
 	})
 
+	assert.NoError(t, err)
 	assert.Equal(t, types.StringValue("campaign"), tag.ID)
 	assert.Equal(t, types.Int64Value(2), tag.Version)
 	assert.Equal(t, types.StringValue("space"), tag.SpaceID)
 	assert.Equal(t, types.StringValue("master"), tag.Environment)
 	assert.Equal(t, types.StringValue("Campaign"), tag.Name)
 	assert.Equal(t, types.StringValue("public"), tag.Visibility)
+}
+
+func TestTag_ImportWithoutEnvironmentFails(t *testing.T) {
+	tag := Tag{}
+	err := tag.Import(&sdk.Tag{
+		Name: "Campaign",
+		Sys: sdk.SystemPropertiesTag{
+			Id:    "campaign",
+			Space: sdk.SystemPropertiesReference{Sys: sdk.SystemPropertiesLink{Id: "space"}},
+		},
+	})
+
+	assert.ErrorContains(t, err, "campaign")
+	assert.True(t, tag.Environment.IsNull())
 }
 
 func TestTag_Draft(t *testing.T) {

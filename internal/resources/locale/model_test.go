@@ -11,7 +11,7 @@ import (
 
 func TestLocale_ImportUsesEnvironmentFromResponse(t *testing.T) {
 	locale := Locale{}
-	locale.Import(&sdk.Locale{
+	err := locale.Import(&sdk.Locale{
 		Code:                 "fr-FR",
 		ContentDeliveryApi:   true,
 		ContentManagementApi: true,
@@ -22,8 +22,9 @@ func TestLocale_ImportUsesEnvironmentFromResponse(t *testing.T) {
 			Environment: &sdk.SystemPropertiesReference{Sys: sdk.SystemPropertiesLink{Id: "staging"}},
 			Version:     1,
 		},
-	}, "staging")
+	})
 
+	assert.NoError(t, err)
 	assert.Equal(t, types.StringValue("locale-id"), locale.ID)
 	assert.Equal(t, types.StringValue("space-id"), locale.SpaceID)
 	assert.Equal(t, types.StringValue("staging"), locale.Environment)
@@ -32,16 +33,17 @@ func TestLocale_ImportUsesEnvironmentFromResponse(t *testing.T) {
 	assert.Equal(t, types.StringValue("fr-FR"), locale.Code)
 }
 
-func TestLocale_ImportFallsBackToConfiguredEnvironment(t *testing.T) {
+func TestLocale_ImportWithoutEnvironmentFails(t *testing.T) {
 	locale := Locale{}
-	locale.Import(&sdk.Locale{
+	err := locale.Import(&sdk.Locale{
 		Code: "fr-FR",
 		Name: "French",
 		Sys: sdk.SystemPropertiesResource{
 			Id:    "locale-id",
 			Space: sdk.SystemPropertiesReference{Sys: sdk.SystemPropertiesLink{Id: "space-id"}},
 		},
-	}, "staging")
+	})
 
-	assert.Equal(t, types.StringValue("staging"), locale.Environment)
+	assert.ErrorContains(t, err, "locale-id")
+	assert.True(t, locale.Environment.IsNull())
 }

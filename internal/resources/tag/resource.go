@@ -119,7 +119,13 @@ func (e *tagResource) Create(ctx context.Context, request resource.CreateRequest
 		return
 	}
 
-	plan.Import(resp.JSON201)
+	if err := plan.Import(resp.JSON201); err != nil {
+		response.Diagnostics.AddError(
+			"Error creating tag",
+			"Could not read created tag: "+err.Error(),
+		)
+		return
+	}
 	response.Diagnostics.Append(response.State.Set(ctx, &plan)...)
 }
 
@@ -148,7 +154,13 @@ func (e *tagResource) Read(ctx context.Context, request resource.ReadRequest, re
 		return
 	}
 
-	state.Import(resp.JSON200)
+	if err := state.Import(resp.JSON200); err != nil {
+		response.Diagnostics.AddError(
+			"Error reading tag",
+			"Could not read tag: "+err.Error(),
+		)
+		return
+	}
 	response.Diagnostics.Append(response.State.Set(ctx, &state)...)
 }
 
@@ -185,16 +197,24 @@ func (e *tagResource) Update(ctx context.Context, request resource.UpdateRequest
 		return
 	}
 
+	var importErr error
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		plan.Import(resp.JSON200)
+		importErr = plan.Import(resp.JSON200)
 	case http.StatusCreated:
-		plan.Import(resp.JSON201)
+		importErr = plan.Import(resp.JSON201)
 	default:
 		err := utils.CheckClientResponse(resp, nil, http.StatusOK)
 		response.Diagnostics.AddError(
 			"Error updating tag",
 			"Could not update tag: "+err.Error(),
+		)
+		return
+	}
+	if importErr != nil {
+		response.Diagnostics.AddError(
+			"Error updating tag",
+			"Could not read updated tag: "+importErr.Error(),
 		)
 		return
 	}
@@ -249,6 +269,12 @@ func (e *tagResource) ImportState(ctx context.Context, request resource.ImportSt
 	}
 
 	state := &Tag{}
-	state.Import(resp.JSON200)
+	if err := state.Import(resp.JSON200); err != nil {
+		response.Diagnostics.AddError(
+			"Error importing tag",
+			"Could not import tag: "+err.Error(),
+		)
+		return
+	}
 	response.Diagnostics.Append(response.State.Set(ctx, state)...)
 }
