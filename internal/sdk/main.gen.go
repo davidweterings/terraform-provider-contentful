@@ -580,6 +580,39 @@ func (e SystemPropertiesPreviewEnvironmentType) Valid() bool {
 	}
 }
 
+// Defines values for TagCollectionSysType.
+const (
+	TagCollectionSysTypeArray TagCollectionSysType = "Array"
+)
+
+// Valid indicates whether the value is a known member of the TagCollectionSysType enum.
+func (e TagCollectionSysType) Valid() bool {
+	switch e {
+	case TagCollectionSysTypeArray:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TagVisibility.
+const (
+	TagVisibilityPrivate TagVisibility = "private"
+	TagVisibilityPublic  TagVisibility = "public"
+)
+
+// Valid indicates whether the value is a known member of the TagVisibility enum.
+func (e TagVisibility) Valid() bool {
+	switch e {
+	case TagVisibilityPrivate:
+		return true
+	case TagVisibilityPublic:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WebhookCollectionSysType.
 const (
 	WebhookCollectionSysTypeArray WebhookCollectionSysType = "Array"
@@ -1932,6 +1965,65 @@ type SystemPropertiesSpace struct {
 	Version int64 `json:"version"`
 }
 
+// SystemPropertiesTag defines model for SystemPropertiesTag.
+type SystemPropertiesTag struct {
+	CreatedBy   SystemPropertiesReference `json:"createdBy"`
+	Environment SystemPropertiesReference `json:"environment"`
+
+	// Id Resource ID
+	Id    string                    `json:"id"`
+	Space SystemPropertiesReference `json:"space"`
+
+	// Type Resource type
+	Type string `json:"type"`
+
+	// UpdatedAt Last update timestamp
+	UpdatedAt *time.Time                 `json:"updatedAt,omitempty"`
+	UpdatedBy *SystemPropertiesReference `json:"updatedBy,omitempty"`
+
+	// Version Resource version
+	Version int64 `json:"version"`
+
+	// Visibility Determines whether the tag is available only through the CMA or through all Contentful APIs
+	Visibility TagVisibility `json:"visibility"`
+}
+
+// Tag defines model for Tag.
+type Tag struct {
+	// Name Human-readable unique name of the tag
+	Name string              `json:"name"`
+	Sys  SystemPropertiesTag `json:"sys"`
+}
+
+// TagCollection defines model for TagCollection.
+type TagCollection struct {
+	Items *[]Tag `json:"items,omitempty"`
+
+	// Limit Maximum number of tags returned
+	Limit *int `json:"limit,omitempty"`
+
+	// Skip Number of tags skipped
+	Skip *int `json:"skip,omitempty"`
+	Sys  *struct {
+		Type *TagCollectionSysType `json:"type,omitempty"`
+	} `json:"sys,omitempty"`
+
+	// Total Total number of tags
+	Total *int `json:"total,omitempty"`
+}
+
+// TagCollectionSysType defines model for TagCollection.Sys.Type.
+type TagCollectionSysType string
+
+// TagDraft defines model for TagDraft.
+type TagDraft struct {
+	// Name Human-readable unique name of the tag
+	Name string `json:"name"`
+}
+
+// TagVisibility Determines whether the tag is available only through the CMA or through all Contentful APIs
+type TagVisibility string
+
 // Webhook defines model for Webhook.
 type Webhook struct {
 	// Active Whether the webhook is active
@@ -2084,6 +2176,9 @@ type Skip = int
 
 // SpaceId defines model for spaceId.
 type SpaceId = string
+
+// TagId defines model for tagId.
+type TagId = string
 
 // WebhookId defines model for webhookId.
 type WebhookId = string
@@ -2375,6 +2470,30 @@ type UpdateLocaleParams struct {
 	XContentfulVersion ResourceVersion `json:"X-Contentful-Version"`
 }
 
+// GetAllTagsParams defines parameters for GetAllTags.
+type GetAllTagsParams struct {
+	// Limit Maximum number of items to return
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Skip Number of items to skip
+	Skip *Skip `form:"skip,omitempty" json:"skip,omitempty"`
+}
+
+// DeleteTagParams defines parameters for DeleteTag.
+type DeleteTagParams struct {
+	// XContentfulVersion The version of the locale to update.
+	XContentfulVersion ResourceVersion `json:"X-Contentful-Version"`
+}
+
+// UpsertTagParams defines parameters for UpsertTag.
+type UpsertTagParams struct {
+	// XContentfulTagVisibility Visibility of the tag; defaults to private when creating a tag
+	XContentfulTagVisibility *TagVisibility `json:"X-Contentful-Tag-Visibility,omitempty"`
+
+	// XContentfulVersion Version of the tag to update; omit when creating a tag
+	XContentfulVersion *int64 `json:"X-Contentful-Version,omitempty"`
+}
+
 // GetAllPreviewApiKeysParams defines parameters for GetAllPreviewApiKeys.
 type GetAllPreviewApiKeysParams struct {
 	// Limit Maximum number of items to return
@@ -2500,6 +2619,9 @@ type CreateLocaleJSONRequestBody = LocaleCreate
 
 // UpdateLocaleJSONRequestBody defines body for UpdateLocale for application/json ContentType.
 type UpdateLocaleJSONRequestBody = LocaleUpdate
+
+// UpsertTagJSONRequestBody defines body for UpsertTag for application/json ContentType.
+type UpsertTagJSONRequestBody = TagDraft
 
 // CreatePreviewEnvironmentJSONRequestBody defines body for CreatePreviewEnvironment for application/json ContentType.
 type CreatePreviewEnvironmentJSONRequestBody = PreviewEnvironmentInput
@@ -3561,6 +3683,45 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/locales/{localeId} (the `UpdateLocale` operationId).
 	UpdateLocale(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, localeId LocaleId, params *UpdateLocaleParams, body UpdateLocaleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAllTags Get all tags
+	//
+	// Retrieves all tags in an environment.
+	//
+	// Corresponds with GET /spaces/{spaceId}/environments/{environmentId}/tags (the `GetAllTags` operationId).
+	GetAllTags(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, params *GetAllTagsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTag Delete a tag
+	//
+	// Deletes a tag and removes it from entries and assets that reference it.
+	//
+	// Corresponds with DELETE /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `DeleteTag` operationId).
+	DeleteTag(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *DeleteTagParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTag Get a tag
+	//
+	// Retrieves a specific tag by ID.
+	//
+	// Corresponds with GET /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `GetTag` operationId).
+	GetTag(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpsertTagWithBody Create or update a tag
+	//
+	// Creates a new tag or updates an existing tag.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `UpsertTag` operationId).
+	UpsertTagWithBody(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpsertTag Create or update a tag
+	//
+	// Creates a new tag or updates an existing tag.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `UpsertTag` operationId).
+	UpsertTag(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, body UpsertTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAllPreviewApiKeys Get all preview API keys
 	//
@@ -5296,6 +5457,95 @@ func (c *Client) UpdateLocaleWithBody(ctx context.Context, spaceId SpaceId, envi
 // Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/locales/{localeId} (the `UpdateLocale` operationId).
 func (c *Client) UpdateLocale(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, localeId LocaleId, params *UpdateLocaleParams, body UpdateLocaleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateLocaleRequest(c.Server, spaceId, environmentId, localeId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAllTags Get all tags
+//
+// Retrieves all tags in an environment.
+//
+// Corresponds with GET /spaces/{spaceId}/environments/{environmentId}/tags (the `GetAllTags` operationId).
+func (c *Client) GetAllTags(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, params *GetAllTagsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAllTagsRequest(c.Server, spaceId, environmentId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteTag Delete a tag
+//
+// Deletes a tag and removes it from entries and assets that reference it.
+//
+// Corresponds with DELETE /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `DeleteTag` operationId).
+func (c *Client) DeleteTag(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *DeleteTagParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTagRequest(c.Server, spaceId, environmentId, tagId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetTag Get a tag
+//
+// Retrieves a specific tag by ID.
+//
+// Corresponds with GET /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `GetTag` operationId).
+func (c *Client) GetTag(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTagRequest(c.Server, spaceId, environmentId, tagId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpsertTagWithBody Create or update a tag
+//
+// Creates a new tag or updates an existing tag.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `UpsertTag` operationId).
+func (c *Client) UpsertTagWithBody(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpsertTagRequestWithBody(c.Server, spaceId, environmentId, tagId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpsertTag Create or update a tag
+//
+// Creates a new tag or updates an existing tag.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `UpsertTag` operationId).
+func (c *Client) UpsertTag(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, body UpsertTagJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpsertTagRequest(c.Server, spaceId, environmentId, tagId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -9612,6 +9862,282 @@ func NewUpdateLocaleRequestWithBody(server string, spaceId SpaceId, environmentI
 	return req, nil
 }
 
+// NewGetAllTagsRequest constructs an http.Request for the GetAllTags method
+func NewGetAllTagsRequest(server string, spaceId SpaceId, environmentId EnvironmentId, params *GetAllTagsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "spaceId", spaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/spaces/%s/environments/%s/tags", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Skip != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "skip", *params.Skip, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteTagRequest constructs an http.Request for the DeleteTag method
+func NewDeleteTagRequest(server string, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *DeleteTagParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "spaceId", spaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "tagId", tagId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/spaces/%s/environments/%s/tags/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Contentful-Version", params.XContentfulVersion, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "integer", Format: "int64"})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-Contentful-Version", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetTagRequest constructs an http.Request for the GetTag method
+func NewGetTagRequest(server string, spaceId SpaceId, environmentId EnvironmentId, tagId TagId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "spaceId", spaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "tagId", tagId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/spaces/%s/environments/%s/tags/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpsertTagRequest calls the generic UpsertTag builder with application/json body
+func NewUpsertTagRequest(server string, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, body UpsertTagJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpsertTagRequestWithBody(server, spaceId, environmentId, tagId, params, "application/json", bodyReader)
+}
+
+// NewUpsertTagRequestWithBody constructs an http.Request for the UpsertTag method, with any body, and a specified content type
+func NewUpsertTagRequestWithBody(server string, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "spaceId", spaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "tagId", tagId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/spaces/%s/environments/%s/tags/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.XContentfulTagVisibility != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Contentful-Tag-Visibility", *params.XContentfulTagVisibility, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-Contentful-Tag-Visibility", headerParam0)
+		}
+
+		if params.XContentfulVersion != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "X-Contentful-Version", *params.XContentfulVersion, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "integer", Format: "int64"})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-Contentful-Version", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewGetAllPreviewApiKeysRequest constructs an http.Request for the GetAllPreviewApiKeys method
 func NewGetAllPreviewApiKeysRequest(server string, spaceId SpaceId, params *GetAllPreviewApiKeysParams) (*http.Request, error) {
 	var err error
@@ -11325,6 +11851,51 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/locales/{localeId} (the `UpdateLocale` operationId).
 	UpdateLocaleWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, localeId LocaleId, params *UpdateLocaleParams, body UpdateLocaleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLocaleResponse, error)
+
+	// GetAllTagsWithResponse Get all tags
+	//
+	// Retrieves all tags in an environment.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /spaces/{spaceId}/environments/{environmentId}/tags (the `GetAllTags` operationId).
+	GetAllTagsWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, params *GetAllTagsParams, reqEditors ...RequestEditorFn) (*GetAllTagsResponse, error)
+
+	// DeleteTagWithResponse Delete a tag
+	//
+	// Deletes a tag and removes it from entries and assets that reference it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `DeleteTag` operationId).
+	DeleteTagWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *DeleteTagParams, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error)
+
+	// GetTagWithResponse Get a tag
+	//
+	// Retrieves a specific tag by ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `GetTag` operationId).
+	GetTagWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, reqEditors ...RequestEditorFn) (*GetTagResponse, error)
+
+	// UpsertTagWithBodyWithResponse Create or update a tag
+	//
+	// Creates a new tag or updates an existing tag.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `UpsertTag` operationId).
+	UpsertTagWithBodyWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertTagResponse, error)
+
+	// UpsertTagWithResponse Create or update a tag
+	//
+	// Creates a new tag or updates an existing tag.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `UpsertTag` operationId).
+	UpsertTagWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, body UpsertTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertTagResponse, error)
 
 	// GetAllPreviewApiKeysWithResponse Get all preview API keys
 	//
@@ -14197,6 +14768,170 @@ func (r UpdateLocaleResponse) ContentType() string {
 	return ""
 }
 
+type GetAllTagsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TagCollection
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAllTagsResponse) GetJSON200() *TagCollection {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAllTagsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAllTagsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAllTagsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAllTagsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteTagResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteTagResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTagResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTagResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteTagResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetTagResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Tag
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetTagResponse) GetJSON200() *Tag {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetTagResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTagResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTagResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTagResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpsertTagResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Tag
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Tag
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpsertTagResponse) GetJSON200() *Tag {
+	return r.JSON200
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r UpsertTagResponse) GetJSON201() *Tag {
+	return r.JSON201
+}
+
+// GetBody returns the raw response body bytes
+func (r UpsertTagResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpsertTagResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpsertTagResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpsertTagResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetAllPreviewApiKeysResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -16135,6 +16870,81 @@ func (c *ClientWithResponses) UpdateLocaleWithResponse(ctx context.Context, spac
 		return nil, err
 	}
 	return ParseUpdateLocaleResponse(rsp)
+}
+
+// GetAllTagsWithResponse Get all tags
+//
+// Retrieves all tags in an environment.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /spaces/{spaceId}/environments/{environmentId}/tags (the `GetAllTags` operationId).
+func (c *ClientWithResponses) GetAllTagsWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, params *GetAllTagsParams, reqEditors ...RequestEditorFn) (*GetAllTagsResponse, error) {
+	rsp, err := c.GetAllTags(ctx, spaceId, environmentId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAllTagsResponse(rsp)
+}
+
+// DeleteTagWithResponse Delete a tag
+//
+// Deletes a tag and removes it from entries and assets that reference it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `DeleteTag` operationId).
+func (c *ClientWithResponses) DeleteTagWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *DeleteTagParams, reqEditors ...RequestEditorFn) (*DeleteTagResponse, error) {
+	rsp, err := c.DeleteTag(ctx, spaceId, environmentId, tagId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTagResponse(rsp)
+}
+
+// GetTagWithResponse Get a tag
+//
+// Retrieves a specific tag by ID.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `GetTag` operationId).
+func (c *ClientWithResponses) GetTagWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, reqEditors ...RequestEditorFn) (*GetTagResponse, error) {
+	rsp, err := c.GetTag(ctx, spaceId, environmentId, tagId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTagResponse(rsp)
+}
+
+// UpsertTagWithBodyWithResponse Create or update a tag
+//
+// Creates a new tag or updates an existing tag.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `UpsertTag` operationId).
+func (c *ClientWithResponses) UpsertTagWithBodyWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertTagResponse, error) {
+	rsp, err := c.UpsertTagWithBody(ctx, spaceId, environmentId, tagId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpsertTagResponse(rsp)
+}
+
+// UpsertTagWithResponse Create or update a tag
+//
+// Creates a new tag or updates an existing tag.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /spaces/{spaceId}/environments/{environmentId}/tags/{tagId} (the `UpsertTag` operationId).
+func (c *ClientWithResponses) UpsertTagWithResponse(ctx context.Context, spaceId SpaceId, environmentId EnvironmentId, tagId TagId, params *UpsertTagParams, body UpsertTagJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertTagResponse, error) {
+	rsp, err := c.UpsertTag(ctx, spaceId, environmentId, tagId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpsertTagResponse(rsp)
 }
 
 // GetAllPreviewApiKeysWithResponse Get all preview API keys
@@ -18103,6 +18913,107 @@ func ParseUpdateLocaleResponse(rsp *http.Response) (*UpdateLocaleResponse, error
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAllTagsResponse parses an HTTP response from a GetAllTagsWithResponse call
+func ParseGetAllTagsResponse(rsp *http.Response) (*GetAllTagsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAllTagsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TagCollection
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTagResponse parses an HTTP response from a DeleteTagWithResponse call
+func ParseDeleteTagResponse(rsp *http.Response) (*DeleteTagResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTagResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetTagResponse parses an HTTP response from a GetTagWithResponse call
+func ParseGetTagResponse(rsp *http.Response) (*GetTagResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTagResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Tag
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpsertTagResponse parses an HTTP response from a UpsertTagWithResponse call
+func ParseUpsertTagResponse(rsp *http.Response) (*UpsertTagResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpsertTagResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Tag
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Tag
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	}
 
